@@ -2,6 +2,8 @@ package net.guides.springboot2.springboot2jpacrudexample.aspect;
 
 import java.util.Arrays;
 
+import net.guides.springboot2.springboot2jpacrudexample.neo4j.repository.ThrowableGraphLoader;
+import net.guides.springboot2.springboot2jpacrudexample.utils.StackTraceUtils;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.After;
@@ -12,6 +14,7 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -26,6 +29,9 @@ public class LoggingAspect {
 
 	private final Logger log = LoggerFactory.getLogger(this.getClass());
 
+	@Autowired
+	ThrowableGraphLoader throwableGraphLoader;
+
 	/**
 	 * Run before the method execution.
 	 * @param joinPoint
@@ -33,8 +39,21 @@ public class LoggingAspect {
 	@Before("execution(* net.guides.springboot2.springboot2jpacrudexample.service.EmployeeService.addEmployee(..))")
 	public void logBefore(JoinPoint joinPoint) {
 		log.debug("logBefore running .....");
+		String trace = prepareAndSendStackTrace();
+		Throwable traceThrowable = new Throwable(trace);
+		StackTraceElement[] stackTrace = traceThrowable.getStackTrace();
+		throwableGraphLoader.loadThrowableData(stackTrace);
+//		for (StackTraceElement element : stackTrace) {
+//			log.debug("element.getClassName()"+ element.getClassName());
+//			log.debug("element.getMethodName "+ element.getMethodName());
+//			log.debug("element.getFileName() "+element.getFileName());
+//			log.debug("element.getLineNumber()"+element.getLineNumber());
+//		}
+
+		log.debug("TRACE:::\n"+trace);
 		log.debug("Enter: {}() with argument[s] = {}", joinPoint.getSignature().getDeclaringTypeName(),
 				joinPoint.getSignature().getName(), Arrays.toString(joinPoint.getArgs()));
+
 		
 	}
 
@@ -102,5 +121,9 @@ public class LoggingAspect {
 		log.debug("logAfterThrowing running .....");
 		log.error("Exception in {}.{}() with cause = {}", joinPoint.getSignature().getDeclaringTypeName(),
 				joinPoint.getSignature().getName(), error.getCause() != null ? error.getCause() : "NULL");
+	}
+
+	public String prepareAndSendStackTrace(){
+		return StackTraceUtils.compactStackTrace(new Throwable());
 	}
 }
